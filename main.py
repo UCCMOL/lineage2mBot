@@ -6,12 +6,14 @@ import discord
 import json
 import time
 import datetime
+from discord.ext import tasks
 from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
 #regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul} \.]+)?"
 regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul}\.]+)? *?([\+])? *([\w\p{Hangul} \.]+)?"
 def myconverter(o):
@@ -71,6 +73,18 @@ configs => {
                         }
 
 '''
+@tasks.loop(minutes=1.0)
+async def check_boss_time():
+    channel = client.get_channel(int(CHANNEL_ID))
+    print(channel)
+    await channel.send("test")
+@check_boss_time.before_loop
+async def before_printer():
+    print('waiting...')
+    await client.wait_until_ready()
+
+
+
 @client.event
 async def on_ready():
     for guild in client.guilds:
@@ -81,9 +95,14 @@ async def on_ready():
         f'{client.user} is connected to the following guild:\n'
         f'{guild.name}(id: {guild.id})'
     )
+    check_boss_time.start()
+    
 @client.event
 async def on_message(message):
     if message.author == client.user:
+        return
+    print(message.channel.id)
+    if(str(message.channel.id) != str(CHANNEL_ID)):
         return
     db = dbm.open('lineageBossTimer','c')
     commands = message.content;

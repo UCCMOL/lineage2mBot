@@ -12,12 +12,54 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-regex = r"([\.!])([\w\p{Hangul}]+)\s+([\w\p{Hangul}]+)?\s+([\w\p{Hangul} \.]+)?"
+regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul} \.]+)?"
 def myconverter(o):
     if isinstance(o, datetime.datetime):
         return o.__str__()
 
 client = discord.Client()
+nickname = {
+"트롬" : "트롬바",
+"가" : "가레스",
+"엔" : "엔쿠라",
+"펜" : "오르펜",
+"발" : "발보",
+"티엘" : "티미니엘",
+"셀" : "셀루",
+"켈" : "켈소스",
+"체" : "체르투바",
+"바" : "바실라",
+"개미" : "여왕개미",
+"템" : "템페스트",
+"펠" : "펠리스",
+"사르" : "사르카",
+"판드" : "판드라이드",
+"돌크" : "돌연변이크루마",
+"오크" : "오염된크루마",
+"코어" : "코어수스캡터",
+"판나" : "판나로드",
+"마투" : "마투라",
+"브" : "브래카",
+"메" : "메두사",
+"릴" : "블랙릴리",
+"베" : "베히모스",
+"드비" : "드래곤비스트",
+"카" : "카탄",
+"히실" : "히실로메",
+"란" : "란도르",
+"올" : "올크스",
+"거울" : "망각의거울",
+"사무" : "사무엘",
+"글" : "글라키",
+"우칸" : "우칸바",
+"노르" : "노르무스",
+"카브" : "카브리오",
+"플린" : "플린트",
+"안드" : "안드라스",
+"하프" : "없음",
+"무프" : "없음",
+"티미트리스" : "없음"
+}
 '''
 configs => { 
                 'boss' => {
@@ -52,36 +94,43 @@ async def on_message(message):
     else:
         configs = {"boss" : {}}
     matches = re.finditer(regex, commands, re.MULTILINE)
-    print("before do commandsd",configs)
-    do_commands(matches,configs)
-    print("after do commandsd",configs)
+    await do_commands(matches,configs,message)
     db['lineage2m'] = json.dumps(configs, default=myconverter)
     db.close()
     
-def show_boss_messages(configs):
+async def show_boss_messages(configs,server):
+    response = "```\n"
     for key,value in configs["boss"].items():
-        print(key,value["last_time"],value["reborn_time"],value["messages"])
-def update_boss_messages(configs,boss_name,reborn_time):
+        boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
+        boss_next_time = boss_last_time + timedelta(hours=float(configs["boss"][key]["reborn_time"]))
+        response = response + str(boss_last_time.strftime("%H:%M")) + " -> " + str(boss_next_time.strftime("%H:%M")) + " " + str(key) + " " + str(value["messages"]) + "\n"
+    response = response + "```"
+    await server.channel.send(response)
+async def update_boss_messages(configs,boss_name,reborn_time):
     if boss_name in configs["boss"]:
         configs["boss"][boss_name]["reborn_time"] = reborn_time
-def create_boss_messages(configs,boss_name,reborn_time):
+async def create_boss_messages(configs,boss_name,reborn_time):
+    if boss_name in nickname:
+        boss_name = nickname[boss_name]
     if boss_name not in configs["boss"]:
         now = datetime.datetime.now()
-        configs["boss"][boss_name] = {"last_time": now.strftime("%H%M") , "reborn_time" : reborn_time , "messages" : ""}
-def delete_boss_messages(configs,boss_name):
+        configs["boss"][boss_name] = {"last_time": now.strftime("%H%M") , "reborn_time" : reborn_time , "messages" : " "}
+async def delete_boss_messages(configs,boss_name):
+    if boss_name in nickname:
+        boss_name = nickname[boss_name]
     if boss_name in configs["boss"]:
         configs["boss"].pop(boss_name, None)
-def kill_boss_messages(configs,boss_name,messages = ""):
+async def kill_boss_messages(configs,boss_name,messages = ""):
+    if boss_name in nickname:
+        boss_name = nickname[boss_name]
     if boss_name in configs["boss"]:
         boss_last_time = datetime.datetime.strptime(configs["boss"][boss_name]["last_time"],"%H%M")
         boss_last_time = boss_last_time + timedelta(hours=float(configs["boss"][boss_name]["reborn_time"]))
         configs["boss"][boss_name]["last_time"] = boss_last_time.strftime("%H%M")
         if messages != "" :
             configs["boss"][boss_name]["messages"] = messages
-def do_commands(matches,configs):
-    print("in do_commands")
-    print(matches)
-    print(configs)
+
+async def do_commands(matches,configs,server):
     for matchNum, match in enumerate(matches, start=1):
         print ("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
         
@@ -92,20 +141,21 @@ def do_commands(matches,configs):
         if len(match.groups()) > 1:
             if match.group(1) == ".":
                 if match.group(2) == "보스":
-                    show_boss_messages(configs)
+                    print("in show_boss")
+                    await show_boss_messages(configs,server)
                 elif match.group(2) == "컷":
                     if len(match.groups()) == 3:
-                        kill_boss_messages(configs,match.group(3))
+                        await kill_boss_messages(configs,match.group(3))
                     elif len(match.groups()) >3:
-                        kill_boss_messages(configs,match.group(3),match.group(4))
+                        await kill_boss_messages(configs,match.group(3),match.group(4))
             elif match.group(1) == "!":
                 if match.group(2) == "설정":
                     if len(match.groups()) > 3:
-                        update_boss_messages(configs,match.group(3),match.group(4))
+                        await update_boss_messages(configs,match.group(3),match.group(4))
                 elif match.group(2) == "추가":
                     if len(match.groups()) > 3:
-                        create_boss_messages(configs,match.group(3),match.group(4))
+                        await create_boss_messages(configs,match.group(3),match.group(4))
                 elif match.group(2) == "삭제":
                     if len(match.groups()) > 3:
-                        delete_boss_messages(configs,match.group(3))
+                        await delete_boss_messages(configs,match.group(3))
 client.run(TOKEN)

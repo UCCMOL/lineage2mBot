@@ -103,7 +103,6 @@ async def check_boss_time():
         boss_next_time_4_min_before = boss_next_time - timedelta(minutes=4)
         boss_next_time_1_min_before = boss_next_time - timedelta(minutes=1)
         boss_next_time_30_min_aftre = boss_next_time + timedelta(minutes=30)
-        print(boss_next_time,boss_next_time_5_min_before,boss_next_time_4_min_before,boss_next_time_1_min_before,now)
         if boss_next_time_5_min_before <= now and now < boss_next_time_4_min_before:
             response = "```\n"
             #히실로메 - 격전의 평원에서 5분 안에 리젠 됩니다! 예상 젠 시간 : 19:38
@@ -131,7 +130,7 @@ async def before_printer():
 @client.event
 async def on_ready():
     for guild in client.guilds:
-        if guild.id == GUILD:
+        if guild.id != GUILD:
             break
 
     print(
@@ -146,6 +145,7 @@ async def on_message(message):
         return
     if(str(message.channel.id) != str(CHANNEL_ID) and str(message.channel.id) != str(SETTING_CHANNEL_ID)):
         return
+    print(message)
     db = dbm.open('lineageBossTimer','c')
     commands = message.content;
     if "lineage2m" in db:
@@ -171,14 +171,29 @@ async def show_boss_messages(configs,channel,boss_name = None):
             response = response + str(configs["boss"][boss_name]["messages"]) + "\n"
     else:
         res = sorted(configs["boss"].items(), key = lambda x: x[1]['new_time']) 
+        now = await get_current_time()
+        now_time_in_int = int(now.strftime("%H%M"))
         print(res)
         for key,value in res:
-            boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
-            boss_next_time = boss_last_time + timedelta(hours=float(configs["boss"][key]["reborn_time"]))
-            response = response + str(boss_last_time.strftime("%H:%M")) + " -> " + str(boss_next_time.strftime("%H:%M")) + " " + str(key) + " " + " " + str(configs["boss"][key]["place"]) + " " + str(configs["boss"][key]["reborn_time"])
-            if configs["boss"][key]["unborn_times"] > 0:
-                response = response + "멍:" + str(configs["boss"][key]["unborn_times"]) + "회 "
-            response = response + str(value["messages"]) + "\n"
+            boss_new_time = datetime.datetime.strptime(configs["boss"][key]["new_time"],"%H%M")
+            boss_new_time_in_int = int(boss_new_time.strftime("%H%M"))
+            if(boss_new_time_in_int > now_time_in_int):
+              boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
+              boss_next_time = boss_last_time + timedelta(hours=float(configs["boss"][key]["reborn_time"]))
+              response = response + str(boss_last_time.strftime("%H:%M")) + " -> " + str(boss_next_time.strftime("%H:%M")) + " " + str(key) + " " + " " + str(configs["boss"][key]["place"]) + " " + str(configs["boss"][key]["reborn_time"])
+              if configs["boss"][key]["unborn_times"] > 0:
+                  response = response + "멍:" + str(configs["boss"][key]["unborn_times"]) + "회 "
+              response = response + str(value["messages"]) + "\n"
+        for key,value in res:
+            boss_new_time = datetime.datetime.strptime(configs["boss"][key]["new_time"],"%H%M")
+            boss_new_time_in_int = int(boss_new_time.strftime("%H%M"))
+            if(boss_new_time_in_int <= now_time_in_int):
+              boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
+              boss_next_time = boss_last_time + timedelta(hours=float(configs["boss"][key]["reborn_time"]))
+              response = response + str(boss_last_time.strftime("%H:%M")) + " -> " + str(boss_next_time.strftime("%H:%M")) + " " + str(key) + " " + " " + str(configs["boss"][key]["place"]) + " " + str(configs["boss"][key]["reborn_time"])
+              if configs["boss"][key]["unborn_times"] > 0:
+                  response = response + "멍:" + str(configs["boss"][key]["unborn_times"]) + "회 "
+              response = response + str(value["messages"]) + "\n"
     response = response + "```"
     await channel.send(response)
 async def update_boss_messages(configs,channel,boss_name = None,target = None , new_setting = None):

@@ -15,6 +15,7 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
+SETTING_CHANNEL_ID = os.getenv('DISCORD_SETTING_CHANNEL_ID')
 UTC_PLUS  = 8
 #regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul} \.]+)?"
 regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul}\.]+)? *([\+])? *([\w\p{Hangul} \.]+)?"
@@ -106,17 +107,18 @@ async def check_boss_time():
             #히실로메 - 격전의 평원에서 5분 안에 리젠 됩니다! 예상 젠 시간 : 19:38
             response = response + str(key) + " - " + str(value["place"]) + "에서 " + str(5) + "분 안에 리젠 됩니다! 예상 젠시간 :" + str(boss_next_time.strftime("%H%M")) + "\n"
             response = response + "```"
+            await channel.send(response)
             print(5,key)
         if boss_next_time_1_min_before <= now and now < boss_next_time:
             response = "```\n"
             #히실로메 - 격전의 평원에서 1분 안에 리젠 됩니다! 예상 젠 시간 : 19:38
             response = response + str(key) + " - " + str(value["place"]) + "에서 " + str(1) + "분 안에 리젠 됩니다! 예상 젠시간 :" + str(boss_next_time.strftime("%H%M")) + "\n"
             response = response + "```"
+            await channel.send(response)
             print(1,key)
         if boss_next_time_30_min_aftre == now:
             boss_unreborn(configs,channel,key)
     db.close()
-    await channel.send(now.strftime("%H:%M"))
 @check_boss_time.before_loop
 async def before_printer():
     print('waiting...')
@@ -140,7 +142,7 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    if(str(message.channel.id) != str(CHANNEL_ID)):
+    if(str(message.channel.id) != str(CHANNEL_ID) and str(message.channel.id) != str(SETTING_CHANNEL_ID)):
         return
     db = dbm.open('lineageBossTimer','c')
     commands = message.content;

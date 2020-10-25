@@ -67,6 +67,7 @@ configs => {
                                             'last_time': '<젠시간>',
                                             'reborn_time' : '<reborn time>',
                                             'messages' : '""',
+                                            'place' : '<place>',
                             
                                       }
                 
@@ -131,20 +132,28 @@ async def show_boss_messages(configs,server,boss_name = None):
             response = response + str(boss_last_time.strftime("%H:%M")) + " -> " + str(boss_next_time.strftime("%H:%M")) + " " + str(key) + " " + str(value["messages"]) + "\n"
     response = response + "```"
     await server.channel.send(response)
-async def update_boss_messages(configs,server,boss_name,reborn_time):
+async def update_boss_messages(configs,server,boss_name = None,reborn_time = None):
+    if boss_name is None:
+        return
     if boss_name in nickname:
         boss_name = nickname[boss_name]
     if boss_name in configs["boss"]:
-        configs["boss"][boss_name]["reborn_time"] = reborn_time
+        configs["boss"][boss_name]["reborn_time"] = float(reborn_time)
         await show_boss_messages(configs,server,boss_name)
-async def create_boss_messages(configs,server,boss_name,reborn_time):
+async def create_boss_messages(configs,server,boss_name = None,reborn_time = None,place = None):
+    if boss_name is None:
+        return
     if boss_name in nickname:
         boss_name = nickname[boss_name]
     if boss_name not in configs["boss"]:
         now = datetime.datetime.now()
-        configs["boss"][boss_name] = {"last_time": now.strftime("%H%M") , "reborn_time" : reborn_time , "messages" : " "}
+        if place is None:
+            place = ""
+        configs["boss"][boss_name] = {"last_time": now.strftime("%H%M") , "reborn_time" : float(reborn_time) , "messages" : " " ,"place" : str(place)}
         await show_boss_messages(configs,server,boss_name)
-async def delete_boss_messages(configs,server,boss_name):
+async def delete_boss_messages(configs,server,boss_name = None):
+    if boss_name is None:
+        return
     if boss_name in nickname:
         boss_name = nickname[boss_name]
     if boss_name in configs["boss"]:
@@ -190,12 +199,9 @@ async def do_commands(matches,configs,server):
                     await kill_boss_messages(configs,server,match.group(3),kill_time = match.group(4),messages = match.group(6))
             elif match.group(1) == "!":
                 if match.group(2) == "설정":
-                    if len(match.groups()) > 3:
-                        await update_boss_messages(configs,server,match.group(3),match.group(4))
+                    await update_boss_messages(configs,server,boss_name = match.group(3),reborn_time = match.group(4))
                 elif match.group(2) == "추가":
-                    if len(match.groups()) > 3:
-                        await create_boss_messages(configs,server,match.group(3),match.group(4))
+                    await create_boss_messages(configs,server,boss_name = match.group(3),reborn_time = match.group(4),place = match.group(6))
                 elif match.group(2) == "삭제":
-                    if len(match.groups()) > 3:
-                        await delete_boss_messages(configs,server,match.group(3))
+                    await delete_boss_messages(configs,server,boss_name = match.group(3))
 client.run(TOKEN)

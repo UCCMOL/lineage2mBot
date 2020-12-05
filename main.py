@@ -99,6 +99,8 @@ async def show_boss_message_every_ten_minutes():
   else:
       configs = {"boss" : {}}
   await show_boss_messages(configs,channel)
+  db['lineage2m'] = json.dumps(configs, default=myconverter)
+  db.close()
   
 @tasks.loop(minutes=1.0)
 async def check_boss_time():

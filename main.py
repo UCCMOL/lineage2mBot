@@ -18,7 +18,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
 SETTING_CHANNEL_ID = os.getenv('DISCORD_SETTING_CHANNEL_ID')
-
+LOD_CHANNEL_ID=os.getenv('DISCORD_LOG_CHANNEL_ID')
 UTC_PLUS  = 9
 #regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul} \.]+)?"
 regex = r"([\.!])([\w\p{Hangul}]+)\s*([\w\p{Hangul}]+)?\s*([\w\p{Hangul}\.]+)? *([\+])? *([\w\p{Hangul} \.]+)?"
@@ -89,6 +89,17 @@ async def get_current_time():
     return_time = return_time.replace(tzinfo=None)
     return_time = datetime.datetime.strptime(return_time.strftime("%H%M"),"%H%M")
     return return_time
+
+@tasks.loop(minutes=10.0)
+async def show_boss_message_every_ten_minutes():
+  channel = client.get_channel(int(LOD_CHANNEL_ID))
+  db = dbm.open('lineageBossTimer','c')
+  if "lineage2m" in db:
+      configs = json.loads(str(db["lineage2m"],"utf-8"))
+  else:
+      configs = {"boss" : {}}
+  await show_boss_messages(configs,channel)
+  
 @tasks.loop(minutes=1.0)
 async def check_boss_time():
     channel = client.get_channel(int(CHANNEL_ID))
@@ -122,9 +133,11 @@ async def check_boss_time():
             print(1,key)
         if boss_next_time_30_min_after == now:
             await boss_unreborn(configs,channel,key)
+    db['lineage2m'] = json.dumps(configs, default=myconverter)
     db.close()
     print("do event every minutes end")
 @check_boss_time.before_loop
+@show_boss_message_every_ten_minutes.before_loop
 async def before_printer():
     print('waiting...')
     await client.wait_until_ready()
@@ -142,6 +155,7 @@ async def on_ready():
         f'{guild.name}(id: {guild.id})'
     )
     check_boss_time.start()
+    show_boss_message_every_ten_minutes.start()
     
 @client.event
 async def on_message(message):

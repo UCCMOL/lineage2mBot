@@ -4,6 +4,7 @@ import dbm
 import regex as re
 import discord
 import json
+from replit import db
 import time
 import random
 import datetime
@@ -93,21 +94,19 @@ async def get_current_time():
 @tasks.loop(minutes=10.0)
 async def show_boss_message_every_ten_minutes():
   channel = client.get_channel(int(LOD_CHANNEL_ID))
-  db = dbm.open('lineageBossTimer','c')
-  if "lineage2m" in db:
-      configs = json.loads(str(db["lineage2m"],"utf-8"))
+  boss_data = db['lineageBossTimer']
+  if(boss_data):
+      configs = json.loads(boss_data)
   else:
       configs = {"boss" : {}}
   await show_boss_messages(configs,channel)
-  db['lineage2m'] = json.dumps(configs, default=myconverter)
-  db.close()
   
 @tasks.loop(minutes=1.0)
 async def check_boss_time():
     channel = client.get_channel(int(CHANNEL_ID))
-    db = dbm.open('lineageBossTimer','c')
-    if "lineage2m" in db:
-        configs = json.loads(str(db["lineage2m"],"utf-8"))
+    boss_data = db['lineageBossTimer']
+    if(boss_data):
+        configs = json.loads(boss_data)
     else:
         configs = {"boss" : {}}
     now = await get_current_time()
@@ -135,8 +134,7 @@ async def check_boss_time():
             print(1,key)
         if boss_next_time_30_min_after == now:
             await boss_unreborn(configs,channel,key)
-    db['lineage2m'] = json.dumps(configs, default=myconverter)
-    db.close()
+    db['lineageBossTimer'] = json.dumps(configs, default=myconverter)
     print("do event every minutes end")
 @check_boss_time.before_loop
 @show_boss_message_every_ten_minutes.before_loop
@@ -165,16 +163,15 @@ async def on_message(message):
         return
     if(str(message.channel.id) != str(CHANNEL_ID) and str(message.channel.id) != str(SETTING_CHANNEL_ID)):
         return
-    db = dbm.open('lineageBossTimer','c')
+    boss_data = db['lineageBossTimer']
     commands = message.content;
-    if "lineage2m" in db:
-        configs = json.loads(str(db["lineage2m"],"utf-8"))
+    if(boss_data):
+        configs = json.loads(boss_data)
     else:
         configs = {"boss" : {}}
     matches = re.finditer(regex, commands, re.MULTILINE)
     await do_commands(matches,configs,message.channel)
-    db['lineage2m'] = json.dumps(configs, default=myconverter)
-    db.close()
+    db['lineageBossTimer'] = json.dumps(configs, default=myconverter)
     
 async def show_boss_messages(configs,channel,boss_name = None):
     response = "```\n"

@@ -2,6 +2,7 @@
 import os
 import dbm
 import regex as re
+import requests
 import discord
 import json
 from replit import db
@@ -28,6 +29,7 @@ def myconverter(o):
         return o.__str__()
 
 client = discord.Client()
+print(vars(client.http))
 nickname = {
 "트롬" : "트롬바",
 "가" : "가레스",
@@ -91,7 +93,7 @@ async def get_current_time():
     return_time = datetime.datetime.strptime(return_time.strftime("%H%M"),"%H%M")
     return return_time
 
-@tasks.loop(minutes=10.0)
+@tasks.loop(minutes=60.0)
 async def show_boss_message_every_ten_minutes():
   channel = client.get_channel(int(LOD_CHANNEL_ID))
   boss_data = db['lineageBossTimer']
@@ -132,7 +134,7 @@ async def check_boss_time():
             response = response + "```"
             await channel.send(response)
             print(1,key)
-        if boss_next_time_30_min_after == now:
+        if str(boss_next_time_30_min_after.strftime("%H%M")) == str(now.strftime("%H%M")):
             await boss_unreborn(configs,channel,key)
     db['lineageBossTimer'] = json.dumps(configs, default=myconverter)
     print("do event every minutes end")

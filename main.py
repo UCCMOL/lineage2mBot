@@ -80,6 +80,7 @@ configs => {
                                             'place' : '<place>',
                                             'new_time' : '<new_time>',
                                             'unborn_times' : '',
+                                            'hide' :'',   # 1 = hide ,0 = not hide
                             
                                       }
                 
@@ -116,6 +117,8 @@ async def check_boss_time():
     for key,value in configs["boss"].items():
         boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
         boss_next_time = datetime.datetime.strptime(configs["boss"][key]["new_time"],"%H%M")
+        if(configs["boss"][key]["hide"]==1):
+          continue
         boss_next_time_5_min_before = boss_next_time - timedelta(minutes=5)
         boss_next_time_4_min_before = boss_next_time - timedelta(minutes=4)
         boss_next_time_1_min_before = boss_next_time - timedelta(minutes=1)
@@ -123,16 +126,16 @@ async def check_boss_time():
         if boss_next_time_5_min_before == now:
             response = "```\n"
             #히실로메 - 격전의 평원에서 5분 안에 리젠 됩니다! 예상 젠 시간 : 19:38
-            response = response + str(key) + " - " + str(value["place"]) + "에서 " + str(5) + "분 안에 리젠 됩니다! 예상 젠시간 :" + str(boss_next_time.strftime("%H%M")) + "\n"
+            response = response + str(key) + " " + str(value["place"]) + "에서 " + str(5) + "분 안에 리젠 됩니다! 예상 젠시간 :" + str(boss_next_time.strftime("%H:%M")) + "\n"
             response = response + "```"
-            await channel.send(response)
+            await channel.send(response,tts=True)
             print(5,key)
         if boss_next_time_1_min_before == now:
             response = "```\n"
             #히실로메 - 격전의 평원에서 1분 안에 리젠 됩니다! 예상 젠 시간 : 19:38
-            response = response + str(key) + " - " + str(value["place"]) + "에서 " + str(1) + "분 안에 리젠 됩니다! 예상 젠시간 :" + str(boss_next_time.strftime("%H%M")) + "\n"
+            response = response + str(key) + " " + str(value["place"]) + "에서 " + str(1) + "분 안에 리젠 됩니다! 예상 젠시간 :" + str(boss_next_time.strftime("%H:%M")) + "\n"
             response = response + "```"
-            await channel.send(response)
+            await channel.send(response,tts=True)
             print(1,key)
         if str(boss_next_time_30_min_after.strftime("%H%M")) == str(now.strftime("%H%M")):
             await boss_unreborn(configs,channel,key)
@@ -194,6 +197,8 @@ async def show_boss_messages(configs,channel,boss_name = None):
         for key,value in res:
             boss_new_time = datetime.datetime.strptime(configs["boss"][key]["new_time"],"%H%M")
             boss_new_time_in_int = int(boss_new_time.strftime("%H%M"))
+            if(configs["boss"][key]["hide"]==1):
+              continue
             if(boss_new_time_in_int > now_time_in_int and boss_new_time_in_int < 2400):
               boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
               boss_next_time = boss_last_time + timedelta(hours=float(configs["boss"][key]["reborn_time"]))
@@ -204,6 +209,8 @@ async def show_boss_messages(configs,channel,boss_name = None):
         for key,value in res:
             boss_new_time = datetime.datetime.strptime(configs["boss"][key]["new_time"],"%H%M")
             boss_new_time_in_int = int(boss_new_time.strftime("%H%M"))
+            if(configs["boss"][key]["hide"]==1):
+              continue
             if(boss_new_time_in_int <= now_time_in_int):
               boss_last_time = datetime.datetime.strptime(configs["boss"][key]["last_time"],"%H%M")
               boss_next_time = boss_last_time + timedelta(hours=float(configs["boss"][key]["reborn_time"]))
@@ -250,8 +257,19 @@ async def create_boss_messages(configs,channel,boss_name = None,reborn_time = No
         if place is None:
             place = ""
         new_time = now + timedelta(hours=float(reborn_time))
-        configs["boss"][boss_name] = {"last_time": now.strftime("%H%M") , "reborn_time" : float(reborn_time) , "messages" : " " ,"place" : str(place) , "unborn_times" : 0 ,"new_time": new_time.strftime("%H%M")}
+        configs["boss"][boss_name] = {"last_time": now.strftime("%H%M") , "reborn_time" : float(reborn_time) , "messages" : " " ,"place" : str(place) , "unborn_times" : 0 ,"new_time": new_time.strftime("%H%M"),"hide": 0}
         await show_boss_messages(configs,channel,boss_name)
+async def hide_boss(configs,channel,boss_name= None):
+    if boss_name is None:
+        return
+    if boss_name in nickname:
+        boss_name = nickname[boss_name]
+    if boss_name in configs["boss"]:
+        configs["boss"][boss_name]["hide"]=1
+        response = "```\n"
+        response = response + str(boss_name) + " 숨김을 됐습니다\n"
+        response = response + "```"
+        await channel.send(response) 
 async def delete_boss_messages(configs,channel,boss_name = None):
     if boss_name is None:
         return
@@ -280,6 +298,7 @@ async def kill_boss_messages(configs,channel,boss_name,kill_time = None , messag
         boss_name = nickname[boss_name]
     if boss_name in configs["boss"]:
         configs["boss"][boss_name]["unborn_times"] = 0
+        configs["boss"][boss_name]["hide"] = 0
         if messages != None:
             configs["boss"][boss_name]["messages"] = messages
         if kill_time != None:
@@ -314,6 +333,8 @@ async def do_commands(matches,configs,channel):
                     await boss_unreborn(configs,channel,match.group(3))
                 elif match.group(2) == "뽑기":
                     await randompick(configs,channel,pick_num = match.group(3),peoples = match.group(6))
+                elif match.group(2) == "숨김":
+                    await hide_boss(configs,channel,match.group(3))
             elif match.group(1) == "!":
                 if match.group(2) == "설정":
                     await update_boss_messages(configs,channel,boss_name = match.group(3),target = match.group(4), new_setting = match.group(6))
